@@ -1,0 +1,161 @@
+important Links
+-https://github.com/rnelsonchem/odenlls/blob/master/examples/3.%20First%20order%20reversible%20kinetics%20simulation%20and%20fitting.ipynb
+
+
+General factorial design of experiments was carried out fortwo variables of bed temperature (20, 25, 30, 35, 40 and 45)
+and initial moisture content (60, 65, 70, 75 and 80%).
+heights of 5, 20, 45 and 60 cm of fermented contents
+
+solve the 2-dimensional heat transfer equation
+
+temperatures18 and 45oC are determined as Tminand Tmax.
+
+a1, a2, b0, b1, b2
+
+mCO2, mRL, mwand Yx/w were considered 0.005, 0.002, 0.018 and 1.53,
+
+u
+= [a1(T
+-
+Tmin) (1
+-
+exp (a2 (T
+-
+Tmax)))]2
+×
+
+b0 +
+b1Y
++
+b2Y2
+
+Um Xm YX/CO2 mCO2 R2
+
+Obtained fit parameters describing dependence of Um, Xm, YX/CO2 and YRL/X on temperature and bed moisture
+content for two models of Eqs. (8) and (9).
+
+The values for mCO2, mRL, mwand YX/Wwere considered 0.005, 0.002, 0.018 and 1.53, respec-tively.
+
+Also, the presented fit parameters (a1, a2, b0, b1, b2) inTable 4 were used in Eq. (9) to describe effect of environmentalconditions on Xm,Um, YRL/Xand YX/CO2.
+
+
+table1
+Table 1 – Parameters values for 3-liter bioreactor
+modeling.
+Symbol Parameters
+values
+References
+a, b, c, da 18.30, 3816.44,
+227.02, 133.322
+(Perry et al., 1984)
+BW g water kg-1 IDS Eq. (12)
+CCP g CO2 kg-1 IDS Eq. (5)
+CPR g CO2 kg-1
+IDS h-1
+Eq. (4)
+Cpa 1180 J kg-1
+?C-1 (Himmelblau, 1982)
+Cpb J kg-1
+?C-1 Eq. (17)
+Cps 2500 J kg-1
+?C-1 (Kustermann et al., 1981)
+dHsat
+dT g water kg-1
+air ?C-1
+Eq. (11)
+h J m-2 s-1 ?C-1 Eq. (22)
+IDS 0.34 kg Measured
+Ka 74.16 J h-1m-1
+?C-1 (Himmelblau, 1982)
+Kb J h-1m-1
+?C-1 Eq. (16)
+Ks 1440 J h-1m-1
+?C-1 (Kustermann et al., 1981)
+p 101325 Pa Measured
+R 0.03 m Measured
+Revap g water h-1 Eq. (10)
+RL g
+rhamnolipid kg-1
+IDS
+Eq. (6)
+T ?C Eq. (14)
+T0 27 ?C Measured
+TJ 30 ?C Measured
+Ta 30 ?C Measured
+Vz 60 m h-1 Measured
+W g water kg-1 IDS Eq. (7)
+W0 2.33
+×
+103 g
+water kg-1 IDS
+Measured
+X g biomass kg-1
+IDS
+Eq. (2)
+X0 2.1 g
+biomass kg-1 IDS
+Measured
+Y g water kg-1 IWS Eq. (13)
+Y0 700 g water kg-1
+IWS
+Measured
+YQ 8.4
+×
+103 J g-1
+biomass
+(Sivaprakasam et al., 2008)
+Z 0.6 m Measured
+eb 0.38 Calculated
+ 2414.3 J g-1 water (Himmelblau, 1982)
+a 1.14 kg m-3 (Perry et al., 1984)
+b kg m-3 Eq. (15)
+s 750 kg m-3 Measured
+
+-------------
+Initial bed moisture content (%) Bed temperature (?C) m Xm YX/CO2 mCO2 R2
+65
+25 0.11 81 1.84 0.006 0.993
+30 0.20 120 2.38 0.005 0.997
+35 0.26 131 2.42 0.005 0.997
+40 0.24 72 1.8 0.006 0.995
+70
+25 0.16 102 1.76 0.006 0.993
+30 0.31 170 2.52 0.005 0.998
+35 0.33 184 2.60 0.005 0.996
+40 0.27 63 1.93 0.005 0.994
+75
+25 0.13 71 1.68 0.006 0.991
+30 0.23 103 2.29 0.005 0.997
+35 0.25 119 2.31 0.006 0.997
+40 0.22 42 1.84 0.006 0.995
+
+65
+25 0.11 81 1.84 0.006 0.993
+30 0.20 120 2.38 0.005 0.997
+35 0.26 131 2.42 0.005 0.997
+40 0.24 72 1.8 0.006 0.995
+70
+25 0.16 102 1.76 0.006 0.993
+30 0.31 170 2.52 0.005 0.998
+35 0.33 184 2.60 0.005 0.996
+40 0.27 63 1.93 0.005 0.994
+75
+25 0.13 71 1.68 0.006 0.991
+30 0.23 103 2.29 0.005 0.997
+35 0.25 119 2.31 0.006 0.997
+40 0.22 42 1.84 0.006 0.995
+
+T3
+
+25 0.006 0.003 0.984
+30 0.010 0.002 0.985
+35 0.012 0.002 0.986
+40 0.002 0.002 0.982
+25 0.009 0.002 0.982
+30 0.013 0.003 0.989
+35 0.016 0.003 0.991
+40 0.003 0.002 0.982
+25 0.005 0.002 0.988
+30 0.007 0.002 0.984
+35 0.009 0.003 0.990
+40 0.002 0.002 0.980
