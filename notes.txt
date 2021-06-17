@@ -1,0 +1,33 @@
+Two Dimensional Pseudo-Heterogeneous Models
+Central differencing scheme
+https://in.mathworks.com/matlabcentral/answers/603829-fixed-bed-adsorption-pdepe
+https://www.math.tamu.edu/~phoward/m401/pdemat.pdf
+https://github.com/acuoci/Matlab4CRE/blob/master/practicals/2020-2021/practicals06/SolutionsPracticals06.pdf
+https://ris.utwente.nl/ws/portalfiles/portal/6073612/t0000040.pdf
+https://bitmesra.ac.in/UploadedDocuments/admince/files/ARE%20Module%201%20Notes.pdf
+file:///C:/Users/1609239/Downloads/microorganisms-08-00679-s001.pdf
+https://water.usgs.gov/water-resources/software/DOTABLES/
+https://jckantor.github.io/CBE30338/02.07-Fed-Batch-Bioreactor.html
+https://jckantor.github.io/CBE30338/02.06-Exothermic-CSTR.html
+http://www.engineeringwithpython.com/
+https://jckantor.github.io/CBE30338/02.07-Fed-Batch-Bioreactor.html
+https://jckantor.github.io/CBE30338/07.07-Transient-Heat-Transfer-in-Various-Geometries.html#7.7.4-Cylindrical-Coordinates
+https://gekko.readthedocs.io/en/latest/chemical.html
+https://physics.nyu.edu/pine/pymanual/html/chap9/chap9_scipy.html
+https://link.springer.com/chapter/10.1007/978-3-319-32428-9_5
+https://people.sc.fsu.edu/~jburkardt/py_src/py_src.html
+https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7820488/
+https://www3.ntu.edu.sg/home/ehchua/programming/webprogramming/Python4_DataAnalysis.html#zz-10.
+https://fenicsproject.org/pub/tutorial/pdf/fenics-tutorial-vol1.pdf
+https://jckantor.github.io/ND-Pyomo-Cookbook/05.03-Heat_Conduction_in_Various_Geometries.html
+https://buildmedia.readthedocs.org/media/pdf/pyomo/latest/pyomo.pdf
+http://www.atmos.albany.edu/facstaff/brose/classes/ATM623_Spring2015/Notes/index.html
+http://idaes.org/wp-content/uploads/sites/10/2018/06/Posters-IDAES-2018-05-23.pdf
+http://edge.rit.edu/content/P18751/public/Google%20drive%20backup/Pyomo%20-%20Optimization%20Modeling%20in%20Python%2C%20Second%20Edition.pdf
+https://www.mcs.anl.gov/MACS/files/2014/09/Nicholson_SASSY_slides-1-2.pdf
+https://pyomo.readthedocs.io/en/stable/modeling_extensions/dae.html
+https://github.com/shaktimukker/Numerical-Analysis-Python
+
+package 
+gekko, pyomo, scipy, sympy
+
