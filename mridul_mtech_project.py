@@ -173,7 +173,7 @@ m = ConcreteModel()
 
 m.z = ContinuousSet(bounds=(0,C.Z))
 m.r = ContinuousSet(bounds=(0,C.R))
-m.t = ContinuousSet(bounds=(0,150))
+m.t = ContinuousSet(bounds=(0,200))
 
 m.T = Var(m.t, m.z, m.r)
 
@@ -188,7 +188,7 @@ m.d2Tdr2 = DerivativeVar(m.T, wrt=(m.r, m.r))
 #t,T,z=0,T0,0
 
 def X(m):
-    return C.Xm/(1+((C.Xm/C.X0)-1)*math.exp(-C.Um*m.t))
+    return C.Xm/(1+((C.Xm/C.X0)-1)*np.exp(-C.Um*m.t))
 def dXdt(m):
     return C.Um*X(m)*(1-X(m)/C.Xm)
 def dHdT1(m):
@@ -238,11 +238,11 @@ m.ic  = Constraint(m.z,m.r, rule=lambda m, z, r:    m.T[0,z,r] == 27)
 m.bc1 = Constraint(m.t,m.r, rule=lambda m, t,r:    m.dTdz[t,C.Z,r] == 0 if t > 0 else Constraint.Skip)
 m.bc2 = Constraint(m.t,m.r, rule=lambda m, t,r: m.T[t,0,r] == C.Ta)
 m.bc3 = Constraint(m.t,m.z, rule=lambda m, t,z:    m.dTdz[t,z,0] == 0 if t > 0 else Constraint.Skip)
-m.bc4 = Constraint(m.t,m.z, rule=lambda m, t,z: -C.Kb*m.dTdr[t,z,C.R] -C.h*(m.T[t,z,C.R]-C.Tj)==0)
+m.bc4 = Constraint(m.t,m.z, rule=lambda m, t,z: C.Kb*m.dTdr[t,z,C.R]+C.h*(m.T[t,z,C.R]-C.Tj)==0)
 
-TransformationFactory('dae.finite_difference').apply_to(m, nfe=20, wrt=m.z, scheme='CENTRAL')
-TransformationFactory('dae.finite_difference').apply_to(m, nfe=20, wrt=m.r, scheme='CENTRAL')
-TransformationFactory('dae.finite_difference').apply_to(m, nfe=20, wrt=m.t, scheme='CENTRAL')
+TransformationFactory('dae.finite_difference').apply_to(m, nfe=3, wrt=m.t, scheme='CENTRAL')
+TransformationFactory('dae.finite_difference').apply_to(m, nfe=3, wrt=m.z, scheme='CENTRAL')
+TransformationFactory('dae.finite_difference').apply_to(m, nfe=3, wrt=m.r, scheme='CENTRAL')
 SolverFactory('ipopt').solve(m).write()
 
 model_plot(m)
@@ -287,6 +287,15 @@ def x_vs_t(X,Xm,Um):
 
 # CO2 vs t
 def co2_vs_t(X,Yxco2,Mco2):
+    Xm,Um=1,2
+    t=X
+    comn=1+((Xm/C.X0)-1)*math.exp(-Um*t)
+    RHS1=1/(Yxco2*comn)
+    RHS2=1/(Yxco2*(Xm/C.X0))
+    RHS3=(Mco2/Um)*math.log(comn/((Xm/C.X0)*math.exp(-Um*t)))
+    return C.CCP0+Xm*(RHS1-RHS2+RHS3)
+
+def dco2dt_vs_t(X,Yxco2,Mco2):
     Xm,Um=1,2
     t=X
     comn=1+((Xm/C.X0)-1)*math.exp(-Um*t)
@@ -362,6 +371,12 @@ data_x_vs_t.describe()
 def x_vs_t(X,Xm,Um):
     t=X
     return Xm/(1+((Xm/C.X0)-1)*np.exp(-Um*t))
+#
+ dxdt vs time
+def dXdt_vs_time(X,Xm,Um):
+    t=X
+    X1=x_vs_t(X,Xm,Um)
+    return Um*X1*(1-X1/Xm)
 
 g=[184,.33]
 t=data_x_vs_t["t"].values
@@ -397,6 +412,15 @@ def co2_vs_t(X,Yxco2,Mco2):
     RHS3=(Mco2/Um)*np.log(comn/((Xm/C.X0)*np.exp(-Um*t)))
     return C.CCP0+Xm*(RHS1-RHS2+RHS3)
 
+def dco2dt_vs_t(X,Yxco2,Mco2,Xm,Um):
+    #Xm,Um=184,.33
+    t=X
+    comn=1+((Xm/C.X0)-1)*np.exp(-Um*t)
+    RHS1=Um/Yxco2
+    RHS2=RHS1*(1-1/(comn))
+    RHS3=RHS2+Mco2
+    return RHS3*Xm/comn
+
 g=[2.60,.005]
 t=data_co2_vs_t["t"].values
 X=data_co2_vs_t["co2"].values
@@ -409,6 +433,26 @@ plt.plot(t,y,'r')
 
 print('R^2: ', r2_score(y,X))
 #print('R^2: ', r2_score(X,y))
+
+#### knapsk problem
+from pyomo.environ import *
+A = ['hammer', 'wrench', 'screwdriver', 'towel']
+b = {'hammer':8, 'wrench':3, 'screwdriver':6, 'towel':11}
+w = {'hammer':5, 'wrench':7, 'screwdriver':4, 'towel':3}
+W_max = 14
+model = ConcreteModel()
+model.x = Var( A, within=Binary )
+model.value = Objective(expr = sum( b[i]*model.x[i] for i in A),
+                        sense = maximize )
+model.weight = Constraint(expr = sum( w[i]*model.x[i] for i in A) <= W_max )
+opt = SolverFactory('glpk')
+result_obj = opt.solve(model, tee=True)
+model.pprint()
+
+# dxdt vs time
+def dXdt_vs_time():
+    return C.Um*X(m)*(1-X(m)/C.Xm)
+# dco2dt vs time
 
 
 
