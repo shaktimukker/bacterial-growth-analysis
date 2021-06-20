@@ -14,12 +14,15 @@ p,R=101325, .03
 T0,Tj,Ta,Vz,W0=27, 30, 30, 60, 2.33*1000
 X0,Y0,YQ,Z=2.1, 700, 8.4*1000, .6
 epi,lmbda,rhoA,rhoS=.38, 2414.3, 1.14, 750 
-
-Um, Xm =.33,184
-Vz=60
+Vz,V=60,.003
 h=200
 
 rhoB=epi*rhoA+(1-epi)*rhoS
 Kb=epi*Ka+(1-epi)*Ks
 
 CCP0=0
+
+# parameters to be used
+Xm,Um=183,.33
+Yxco2,Mco2=3.3,.01
+Yxw,Mw=3.3,.01

@@ -245,6 +245,9 @@ TransformationFactory('dae.finite_difference').apply_to(m, nfe=3, wrt=m.z, schem
 TransformationFactory('dae.finite_difference').apply_to(m, nfe=3, wrt=m.r, scheme='CENTRAL')
 SolverFactory('ipopt').solve(m).write()
 
+discretizer = TransformationFactory('dae.collocation')
+discretizer.apply_to(m, nfe =20, ncp=4)
+
 model_plot(m)
 
 m.r
@@ -456,7 +459,366 @@ def dXdt_vs_time():
 
 
 
+## example
+from pyomo.environ import *
+from pyomo.dae import *
+
+pi=3.1416
+
+m = ConcreteModel()
+#m.pi = Param(initialize=pi)
+m.t = ContinuousSet(bounds=(0,2))
+m.x = ContinuousSet(bounds=(0,1))
+m.y = ContinuousSet(bounds=(0,1))
+m.u = Var(m.x,m.y,m.t)
+
+m.dudx = DerivativeVar(m.u,wrt=m.x)
+m.dudx2 = DerivativeVar(m.u,wrt=(m.x,m.x))
+m.dudy = DerivativeVar(m.u,wrt=m.y)
+m.dudy2 = DerivativeVar(m.u,wrt=(m.y,m.y))
+m.dudt = DerivativeVar(m.u,wrt=m.t)
+
+def _pde(m,i,j,k):
+    if i == 0 or i == 1 or  j== 0 or j == 1 or k == 0 :
+        return Constraint.Skip
+    return pi**2*m.dudt[i,j,k] == m.dudx2[i,j,k]
+m.pde = Constraint(m.x,m.y,m.t,rule=_pde)
+
+def _initcon(m,i,j):
+    if i == 0 or i == 1 or j == 0 or j == 1:
+        return Constraint.Skip
+    return m.u[i,j,0] == sin(pi*i)
+m.initcon = Constraint(m.x,m.y,rule=_initcon)
+
+def _lowerboundx(m,j,k):
+    return m.u[0,j,k] == 0
+m.lowerboundx = Constraint(m.t,m.y,rule=_lowerbound)
+
+def _upperboundx(m,j,k):
+    return pi*exp(-j)+m.dudx[1,j,k] == 0
+m.upperboundx = Constraint(m.t,rule=_upperbound)
+
+def _lowerboundy(m,i,k):
+    return m.u[i,0,k] == 0
+m.lowerboundy = Constraint(m.t,rule=_lowerbound)
+
+def _upperboundy(m,j,k):
+    return pi*exp(-j)+m.dudx[i,1,k] == 0
+m.upperboundy = Constraint(m.t,rule=_upperbound)
+
+m.obj = Objective(expr=1)
+
+# Discretize using Orthogonal Collocation
+# discretizer = TransformationFactory('dae.collocation')
+# discretizer.apply_to(m,nfe=10,ncp=3,wrt=m.x)
+# discretizer.apply_to(m,nfe=20,ncp=3,wrt=m.t)
+
+# Discretize using Finite Difference and Collocation
+# =============================================================================
+# discretizer = TransformationFactory('dae.finite_difference')
+# discretizer2 = TransformationFactory('dae.collocation')
+# discretizer.apply_to(m,nfe=25,wrt=m.x,scheme='BACKWARD')
+# discretizer2.apply_to(m,nfe=20,ncp=3,wrt=m.t)
+# =============================================================================
+
+# Discretize using Finite Difference Method
+discretizer = TransformationFactory('dae.finite_difference')
+discretizer.apply_to(m,nfe=25,wrt=m.x,scheme='BACKWARD')
+discretizer.apply_to(m,nfe=25,wrt=m.y,scheme='BACKWARD')
+discretizer.apply_to(m,nfe=20,wrt=m.t,scheme='BACKWARD')
+
+solver=SolverFactory('ipopt')
+results = solver.solve(m,tee=True)
+
+x = []
+t = []
+u = []
+
+for i in sorted(m.x):
+    temp=[]
+    tempx = []
+    for j in sorted(m.t):
+        tempx.append(i)
+        temp.append(value(m.u[i,j]))
+    x.append(tempx)
+    t.append(sorted(m.t))
+    u.append(temp)
 
 
+import numpy
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d.axes3d import Axes3D
+fig = plt.figure()
+ax = fig.add_subplot(1,1,1,projection='3d')
+ax.set_xlabel('Distance x')
+ax.set_ylabel('Time t')
+p = ax.plot_wireframe(np.array(x),np.array(t),np.array(u),rstride=1,cstride=1)
+fig.show()
 
+############ m2
+from pyomo.environ import *
+from pyomo.dae import *
 
+m = ConcreteModel()
+m.time = ContinuousSet(bounds=(0,1))
+m.x = ContinuousSet(bounds=(0,10))
+m.y = ContinuousSet(bounds=(0,5))
+m.T = Var(m.x,m.y,m.time)
+m.u = Var(m.x,m.y,m.time)
+m.T0 = Param(initialize=5)
+m.TD = Param(m.x,m.y,initialize=25)
+m.Ux0 = Param(initialize=10)
+m.Uy5 = Param(initialize=15)
+
+m.dTdx = DerivativeVar(m.T,wrt=m.x)
+m.d2Tdx2 = DerivativeVar(m.T,wrt=(m.x,m.x))
+m.dTdy = DerivativeVar(m.T,wrt=m.y)
+m.d2Tdy2 = DerivativeVar(m.T,wrt=(m.y,m.y))
+m.dTdt = DerivativeVar(m.T,wrt=m.time)
+
+def _heateq(m,i,j,k):
+    return m.d2Tdx2[i,j,k] + m.d2Tdy2[i,j,k] + m.u[i,j,k] == m.dTdt[i,j,k]
+m.heateq = Constraint(m.x,m.y,m.time,rule=_heateq)
+
+def _initT(m,i,j):
+    return m.T[i,j,0] == m.T0
+m.initT = Constraint(m.x,m.y,rule=_initT)
+
+def _xbound(m,j,k):
+    return m.dTdx[0,j,k] == m.Ux0
+m.xbound = Constraint(m.y,m.time,rule=_xbound)
+
+def _ybound(m,i,k):
+    return m.dTdy[i,5,k] == m.Uy5
+m.ybound = Constraint(m.x,m.time,rule=_ybound)
+
+# def _intExp(m,i,j):
+#     return m.T[i,j,1] - m.TD[i,j]
+# m.intExp = Expression(m.x,m.y,rule=_intExp)
+
+# def _obj(m):
+#     return Integral(Integral(expr=m.intExp,wrt=m.x,bounds=(0,10)),
+#                     wrt=m.y,bounds=(0,5))
+# m.obj = Objective(rule=_obj)
+
+m.obj = Objective(expr=1)
+
+# Discretize using Orthogonal Collocation
+# discretizer = TransformationFactory('dae.collocation')
+# discretizer.apply_to(m,nfe=10,ncp=3,wrt=m.x)
+# discretizer.apply_to(m,nfe=20,ncp=3,wrt=m.t)
+
+# Discretize using Finite Difference and Collocation
+# =============================================================================
+# discretizer = TransformationFactory('dae.finite_difference')
+# discretizer2 = TransformationFactory('dae.collocation')
+# discretizer.apply_to(m,nfe=25,wrt=m.x,scheme='BACKWARD')
+# discretizer2.apply_to(m,nfe=20,ncp=3,wrt=m.t)
+# =============================================================================
+
+# Discretize using Finite Difference Method
+discretizer = TransformationFactory('dae.finite_difference')
+discretizer.apply_to(m,nfe=25,wrt=m.x,scheme='BACKWARD')
+discretizer.apply_to(m,nfe=25,wrt=m.y,scheme='BACKWARD')
+discretizer.apply_to(m,nfe=20,wrt=m.time,scheme='BACKWARD')
+
+solver=SolverFactory('ipopt')
+results = solver.solve(m,tee=True)
+
+out=[]
+for i in sorted(m.x):
+    for j in sorted(m.y):
+        for k in sorted(m.time):
+            out.append([i,j,k,value(m.u[i,j,k])])
+outDF=pd.DataFrame(out,columns=["x","y","t","u"])
+outDF=outDF.sort_values(by="t")
+
+### m3
+from pyomo.environ import *
+from pyomo.dae import *
+
+m = ConcreteModel()
+m.time = ContinuousSet(bounds=(0,1))
+m.x = ContinuousSet(bounds=(0,10))
+m.y = ContinuousSet(bounds=(0,5))
+m.T = Var(m.x,m.y,m.time)
+m.u = Var(m.x,m.y,m.time)
+m.T0 = Param(initialize=5)
+m.TD = Param(m.x,m.y,initialize=25)
+m.Ux0 = Param(initialize=10)
+m.Uy5 = Param(initialize=15)
+
+m.dTdx = DerivativeVar(m.T,wrt=m.x)
+m.d2Tdx2 = DerivativeVar(m.T,wrt=(m.x,m.x))
+m.dTdy = DerivativeVar(m.T,wrt=m.y)
+m.d2Tdy2 = DerivativeVar(m.T,wrt=(m.y,m.y))
+m.dTdt = DerivativeVar(m.T,wrt=m.time)
+
+def _heateq(m,i,j,k):
+    return m.d2Tdx2[i,j,k] + m.d2Tdy2[i,j,k] + m.u[i,j,k] == m.dTdt[i,j,k]
+m.heateq = Constraint(m.x,m.y,m.time,rule=_heateq)
+
+def _initT(m,i,j):
+    return m.T[i,j,0] == m.T0
+m.initT = Constraint(m.x,m.y,rule=_initT)
+
+def _xbound(m,j,k):
+    return m.dTdx[0,j,k] == m.Ux0
+m.xbound = Constraint(m.y,m.time,rule=_xbound)
+
+def _ybound(m,i,k):
+    return m.dTdy[i,5,k] == m.Uy5
+m.ybound = Constraint(m.x,m.time,rule=_ybound)
+
+# def _intExp(m,i,j):
+#     return m.T[i,j,1] - m.TD[i,j]
+# m.intExp = Expression(m.x,m.y,rule=_intExp)
+
+# def _obj(m):
+#     return Integral(Integral(expr=m.intExp,wrt=m.x,bounds=(0,10)),
+#                     wrt=m.y,bounds=(0,5))
+# m.obj = Objective(rule=_obj)
+
+m.obj = Objective(expr=1)
+
+# Discretize using Orthogonal Collocation
+# discretizer = TransformationFactory('dae.collocation')
+# discretizer.apply_to(m,nfe=10,ncp=3,wrt=m.x)
+# discretizer.apply_to(m,nfe=20,ncp=3,wrt=m.t)
+
+# Discretize using Finite Difference and Collocation
+# =============================================================================
+# discretizer = TransformationFactory('dae.finite_difference')
+# discretizer2 = TransformationFactory('dae.collocation')
+# discretizer.apply_to(m,nfe=25,wrt=m.x,scheme='BACKWARD')
+# discretizer2.apply_to(m,nfe=20,ncp=3,wrt=m.t)
+# =============================================================================
+
+# Discretize using Finite Difference Method
+discretizer = TransformationFactory('dae.finite_difference')
+discretizer.apply_to(m,nfe=25,wrt=m.x,scheme='BACKWARD')
+discretizer.apply_to(m,nfe=25,wrt=m.y,scheme='BACKWARD')
+discretizer.apply_to(m,nfe=20,wrt=m.time,scheme='BACKWARD')
+
+solver=SolverFactory('ipopt')
+results = solver.solve(m,tee=True)
+
+out=[]
+for i in sorted(m.x):
+    for j in sorted(m.y):
+        for k in sorted(m.time):
+            out.append([i,j,k,value(m.u[i,j,k])])
+outDF=pd.DataFrame(out,columns=["x","y","t","u"])
+outDF=outDF.sort_values(by="t")
+
+###### bed water
+####### co2 vs t
+data_co2_vs_t=pd.read_excel(path+"data.xlsx",sheet_name="co2_vs_t")
+print(data_co2_vs_t.describe())
+
+# CO2 vs t
+
+# X vs t
+def x_vs_t(t,Xm,Um):
+    try :
+        return Xm/(1+((Xm/C.X0)-1)*np.exp(-Um*t))
+    except Exception as e:
+        print("'x_vs_t' "+"method execution Falied")
+        print("Exception is ",str(e))
+
+# dxdt vs time
+def dXdt_vs_time(t,Xm,Um):
+    try:
+        X1=x_vs_t(t,Xm,Um)
+        return Um*X1*(1-X1/Xm)
+    except Exception as e:
+        print("'dXdt_vs_time' "+"method execution Falied")
+        print("Exception is ",str(e))
+
+# dPdt vs time Generalise 
+def dPdt_vs_t(t,Yxp,Mp,Xm=183,Um=.33):
+    try :
+        #Xm,Um=184,.33
+        return Yxp*dXdt_vs_time(t,Xm,Um)+Mp*x_vs_t(t,Xm,Um)
+    except Exception as e:
+        print("'dPdt_vs_t' "+"method execution Falied")
+        print("Exception is ",str(e))
+
+# dHdt vs time
+def dHdt_vs_t(T):
+    try :
+        RHS1=.62413*C.b*C.p
+        RHS2=(T+C.c)**2
+        RHS3=C.d*np.exp(C.a-C.b/(T+C.c))
+        RHS4=(C.p/RHS3-1)**2
+        return RHS1/(RHS2*RHS4*RHS3)
+    except Exception as e:
+        print("'dHdt_vs_t' "+"method execution Falied")
+        print("Exception is ",str(e))
+
+# dTdz vs time
+def dTdz_vs_t(outDF):
+    try:
+        tempZ=outDF[(outDF["z"]==outDF["z"].max())&(outDF["r"]==outDF["r"].max())]['u']
+        tempZ0=outDF[(outDF["z"]==outDF["z"].min())&(outDF["r"]==outDF["r"].max())]['u']
+        return (np.array(tempZ)-np.array(tempZ0))/outDF["z"].max()
+    except Exception as e:
+        print("'dTdz_vs_t' "+"method execution Falied")
+        print("Exception is ",str(e))
+
+# Revap vs time # outDF ['t', 'z', 'r', 'u']
+def Revap_vs_t(outDF):
+    try :
+        dhdt=[dHdt_vs_t(temp) for temp in outDF.groupby("t")["u"].mean().values.tolist()]
+        return C.rhoA*C.Vz*C.V*dTdz_vs_t(outDF)*np.array(dhdt)
+    except Exception as e:
+        print("'Revap_vs_t' "+"method execution Falied")
+        print("Exception is ",str(e))
+    
+# dBWdt vs time
+def dBWdt_vs_t(outDF):
+    try :
+        return np.array(dPdt_vs_t(outDF['t'].unique(),C.Yxw,C.Mw,C.Xm,C.Um))-np.array(Revap_vs_t(outDF))/C.IDS
+    except Exception as e:
+        print("'dBWdt_vs_t' "+"method execution Falied")
+        print("Exception is ",str(e))
+
+# dco2dt vs time
+t=data_co2_vs_t["t"].values
+Yxp,Mp=3.3,.01
+Xm,Um=183,.33
+dPdt_vs_t(t,Yxp,Mp,Xm,Um)
+
+# dwdt vs time
+t=data_co2_vs_t["t"].values
+Yxp,Mp=3.3,.01
+Xm,Um=183,.33
+y=dPdt_vs_t(t,Yxp,Mp,Xm,Um)
+
+# dBWdt vs time
+y=dBWdt_vs_t(outDF)
+
+plt.plot(t,dPdt_vs_t(t,Yxp,Mp,Xm,Um),label='Estimated dW/dt')
+plt.xlabel("Time (Hours)")
+plt.ylabel("dW/dt")
+plt.title("dW/dt vs time")
+plt.legend()
+plt.show()
+
+plt.plot(outDF['t'].unique(),dBWdt_vs_t(outDF),label='Estimated dBW/dt')
+plt.xlabel("Time (Hours)")
+plt.ylabel("dBW/dt")
+plt.title("dBW/dt' vs time")
+plt.legend()
+plt.show()
+
+outDF.columns
+outDF.rename(columns={"x":"z"},inplace=True)
+outDF=outDF[['t','z', 'r', 'u']]
+
+##
+outDF['t'].nunique()
+outDF['x'].nunique()
+outDF['y'].nunique()
+26*26*21
+len(outDF)
