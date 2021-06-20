@@ -67,9 +67,9 @@ from mpl_toolkits.mplot3d.axes3d import Axes3D
 import shutil
 import sys
 import os.path
+import math
 from pyomo.environ import *
 from pyomo.dae import *
-import math
 import C
 
 def model_plot(m):
@@ -822,3 +822,212 @@ outDF['x'].nunique()
 outDF['y'].nunique()
 26*26*21
 len(outDF)
+
+################## m4
+###### bed water
+
+### Heat Equation
+m = ConcreteModel()
+m.t = ContinuousSet(bounds=(0,200))
+m.z = ContinuousSet(bounds=(0,C.Z))
+m.r = ContinuousSet(bounds=(0,C.R))
+m.T = Var(m.z,m.r,m.t)
+m.u = Var(m.z,m.r,m.t)
+m.T0 = Param(initialize=5)
+m.TD = Param(m.z,m.r,initialize=25)
+m.Ux0 = Param(initialize=10)
+m.Uy5 = Param(initialize=15)
+
+m.dTdz = DerivativeVar(m.T,wrt=m.z)
+m.d2Tdz2 = DerivativeVar(m.T,wrt=(m.z,m.z))
+m.dTdr = DerivativeVar(m.T,wrt=m.r)
+m.d2Tdr2 = DerivativeVar(m.T,wrt=(m.r,m.r))
+m.dTdt = DerivativeVar(m.T,wrt=m.t)
+
+def X(m):
+    return "C.Xm/(1+((C.Xm/C.X0)-1)*exp(-C.Um*k))"
+def dXdt(m):
+    return "C.Um*{0}*(1-{1}/C.Xm)".format(X(m),X(m))
+def dHdT1(m):
+    return ".62413*C.b*C.p"
+def dHdT2(m):
+    return "(m.T[i,j,k]+C.c)**2"
+def dHdT3(m):
+    return "C.d*exp(C.a-C.b/(m.T[i,j,k]+C.c))"
+def dHdT4(m):
+    return "(C.p/{0}-1)**2".format(dHdT3(m))
+def dHdT(m):
+    return "{0}/({1}*{2}*{3})".format(dHdT1(m),dHdT2(m),dHdT4(m),dHdT3(m))
+def Cpb(m):
+    return "(C.epi*C.rhoA*(C.Cpa+C.lmbda*{0}+(1-C.epi)*C.rhoS*C.Cps))/C.rhoB".format(dHdT(m))
+def heRHS(m):
+    return "C.rhoB*{0}*m.dTdt[i,j,k]".format(Cpb(m))
+def heLHS1(m):
+    return "C.rhoS*(1-C.epi)*C.YQ*{0}".format(dXdt(m))
+def heLHS2(m):
+    return "C.rhoA*C.Cpa*C.Vz*m.dTdz[i,j,k]"
+def heLHS3(m):
+    return "C.rhoA*C.lmbda*C.Vz*{0}*m.dTdz[i,j,k]".format(dHdT(m))
+def heLHS4(m):
+    return "C.Kb*m.d2Tdz2[i,j,k]"
+def heLHS5(m):
+    return "C.Kb*m.dTdr[i,j,k]/(.01+j)+C.Kb*m.d2Tdr2[i,j,k]"
+
+
+def _heateq(m,i,j,k):
+    return heLHS1(m)-heLHS2(m)-heLHS3(m)+heLHS4(m)+heLHS5(m) == f11(heRHS(m))
+def _heateq(m,i,j,k):
+    return -heLHS3(m)+heLHS4(m)+heLHS5(m) == heRHS(m)
+def _heateq(m,i,j,k):
+    eqString=heLHS1(m)+"-"+heLHS2(m)+"-"+heLHS3(m)+"+"+heLHS4(m)+"+"+heLHS5(m)+"=="+heRHS(m)
+    #eqString=heLHS1(m)+"-"+heLHS2(m)+"-"+heLHS3(m)+"+"+heLHS4(m)+"+"+heLHS5(m) +"=="+heRHS(m)
+    #eqString=" m.d2Tdz2[i,j,k] + m.d2Tdr2[i,j,k] + m.u[i,j,k] == "+heRHS(m)
+    #eqString=' m.d2Tdz2[i,j,k] + m.d2Tdr2[i,j,k] + m.u[i,j,k] == C.rhoB*(C.epi*C.rhoA*(C.Cpa+C.lmbda*.62413*C.b*C.p/((m.T[i,j,k]+C.c)**2*(C.p/C.d*exp(C.a-C.b/(m.T[i,j,k]+C.c))-1)**2*C.d*exp(C.a-C.b/(m.T[i,j,k]+C.c)))+(1-C.epi)*C.rhoS*C.Cps))/C.rhoB*m.dTdt[i,j,k]'
+    print(eqString)
+    #return m.d2Tdz2[i,j,k] + m.d2Tdr2[i,j,k] + m.u[i,j,k] == eval(heRHS(m))
+    return eval(eqString)
+#def _heateq(m,i,j,k):
+    #return m.d2Tdx2[i,j,k] + m.d2Tdy2[i,j,k] + m.u[i,j,k] == m.dTdt[i,j,k]
+m.heateq = Constraint(m.z,m.r,m.t,rule=_heateq)
+
+m.d2Tdz2[i,j,k] + m.d2Tdr2[i,j,k] + m.u[i,j,k] == C.rhoB*(C.epi*C.rhoA*(C.Cpa+C.lmbda*.62413*C.b*C.p/((m.T[i,j,k]+C.c)**2*(C.p/C.d*np.exp(C.a-C.b/(m.T[i,j,k]+C.c))-1)**2*C.d*np.exp(C.a-C.b/(m.T[i,j,k]+C.c)))+(1-C.epi)*C.rhoS*C.Cps))/C.rhoB*m.dTdt[i,j,k]
+
+m.ic  = Constraint(m.z,m.r, rule=lambda m, z, r:    m.T[0,z,r] == 27)
+m.bc1 = Constraint(m.t,m.r, rule=lambda m, t,r:    m.dTdz[t,C.Z,r] == 0 if t > 0 else Constraint.Skip)
+m.bc2 = Constraint(m.t,m.r, rule=lambda m, t,r: m.T[t,0,r] == C.Ta)
+m.bc3 = Constraint(m.t,m.z, rule=lambda m, t,z:    m.dTdz[t,z,0] == 0 if t > 0 else Constraint.Skip)
+m.bc4 = Constraint(m.t,m.z, rule=lambda m, t,z: C.Kb*m.dTdr[t,z,C.R]+C.h*(m.T[t,z,C.R]-C.Tj)==0)
+
+def _initT(m,i,j):
+    return m.T[i,j,0] == C.T0
+m.initT = Constraint(m.z,m.r,rule=_initT)
+
+def _zl_bound(m,j,k):
+    return m.T[0,j,k] == C.Ta 
+m.zl_bound = Constraint(m.r,m.t,rule=_zl_bound)
+
+def _zu_bound(m,j,k):
+    return m.dTdz[C.Z,j,k] == 0
+m.zu_bound = Constraint(m.r,m.t,rule=_zu_bound)
+
+def _rl_bound(m,i,k):
+    return m.dTdz[i,0,k] == 0
+m.rl_bound = Constraint(m.z,m.t,rule=_rl_bound)
+
+def _ru_bound(m,i,k):
+    return C.Kb*m.dTdr[i,C.R,k]+C.h*(m.T[i,C.R,k]-C.Tj)==0
+m.ru_bound = Constraint(m.z,m.t,rule=_ru_bound)
+
+m.obj = Objective(expr=1)
+
+# Discretize using Finite Difference Method
+discretizer = TransformationFactory('dae.finite_difference')
+discretizer.apply_to(m,nfe=20,wrt=m.z,scheme='CENTRAL')
+discretizer.apply_to(m,nfe=20,wrt=m.r,scheme='CENTRAL')
+discretizer.apply_to(m,nfe=20,wrt=m.t,scheme='CENTRAL')
+
+solver=SolverFactory('ipopt')
+results = solver.solve(m,tee=True)
+
+out=[]
+for i in sorted(m.t):
+    for j in sorted(m.z):
+        for k in sorted(m.r):
+            out.append([i,j,k,value(m.u[j,k,i])])
+outDF=pd.DataFrame(out,columns=["t","z","r","u"])
+outDF=outDF.sort_values(by="t")
+
+# X vs t
+def x_vs_t(t,Xm,Um):
+    try :
+        return Xm/(1+((Xm/C.X0)-1)*np.exp(-Um*t))
+    except Exception as e:
+        print("'x_vs_t' "+"method execution Falied")
+        print("Exception is ",str(e))
+
+# dxdt vs time
+def dXdt_vs_time(t,Xm,Um):
+    try:
+        X1=x_vs_t(t,Xm,Um)
+        return Um*X1*(1-X1/Xm)
+    except Exception as e:
+        print("'dXdt_vs_time' "+"method execution Falied")
+        print("Exception is ",str(e))
+
+# dPdt vs time Generalise 
+def dPdt_vs_t(t,Yxp,Mp,Xm=183,Um=.33):
+    try :
+        #Xm,Um=184,.33
+        return Yxp*dXdt_vs_time(t,Xm,Um)+Mp*x_vs_t(t,Xm,Um)
+    except Exception as e:
+        print("'dPdt_vs_t' "+"method execution Falied")
+        print("Exception is ",str(e))
+
+# dHdt vs time
+def dHdt_vs_t(T):
+    try :
+        RHS1=.62413*C.b*C.p
+        RHS2=(T+C.c)**2
+        RHS3=C.d*np.exp(C.a-C.b/(T+C.c))
+        RHS4=(C.p/RHS3-1)**2
+        return RHS1/(RHS2*RHS4*RHS3)
+    except Exception as e:
+        print("'dHdt_vs_t' "+"method execution Falied")
+        print("Exception is ",str(e))
+
+# dTdz vs time
+def dTdz_vs_t(outDF):
+    try:
+        tempZ=outDF[(outDF["z"]==outDF["z"].max())&(outDF["r"]==outDF["r"].max())]['u']
+        tempZ0=outDF[(outDF["z"]==outDF["z"].min())&(outDF["r"]==outDF["r"].max())]['u']
+        return (np.array(tempZ)-np.array(tempZ0))/outDF["z"].max()
+    except Exception as e:
+        print("'dTdz_vs_t' "+"method execution Falied")
+        print("Exception is ",str(e))
+
+# Revap vs time # outDF ['t', 'z', 'r', 'u']
+def Revap_vs_t(outDF):
+    try :
+        dhdt=[dHdt_vs_t(temp) for temp in outDF.groupby("t")["u"].mean().values.tolist()]
+        return C.rhoA*C.Vz*C.V*dTdz_vs_t(outDF)*np.array(dhdt)
+    except Exception as e:
+        print("'Revap_vs_t' "+"method execution Falied")
+        print("Exception is ",str(e))
+    
+# dBWdt vs time
+def dBWdt_vs_t(outDF):
+    try :
+        return np.array(dPdt_vs_t(outDF['t'].unique(),C.Yxw,C.Mw,C.Xm,C.Um))-np.array(Revap_vs_t(outDF))/C.IDS
+    except Exception as e:
+        print("'dBWdt_vs_t' "+"method execution Falied")
+        print("Exception is ",str(e))
+
+# dBWdt vs time
+y=dBWdt_vs_t(outDF)
+
+plt.plot(outDF['t'].unique(),dBWdt_vs_t(outDF),label='Estimated dBW/dt')
+plt.xlabel("Time (Hours)")
+plt.ylabel("dBW/dt")
+plt.title("dBW/dt' vs time")
+plt.legend()
+plt.show()
+
+
+## equation
+m.d2Tdz2[i,j,k] + m.d2Tdr2[i,j,k] + m.u[i,j,k] == 
+C.rhoB*(C.epi*C.rhoA*(C.Cpa+C.lmbda*.62413*C.b*C.p/((m.T[i,j,k]+C.c)**2*
+(C.p/C.d*math.exp(C.a-C.b/(m.T[i,j,k]+C.c))-1)**2*
+C.d*np.exp(C.a-C.b/(m.T[i,j,k]+C.c)))+(1-C.epi)*
+C.rhoS*C.Cps))/C.rhoB*m.dTdt[i,j,k]
+
+
+data = {'a':[600, 600, 600, 600, 600, 600, 600], 'b': ['a', 'b', 'b', 'a', 'a', 'a', 'a']} 
+
+data = pd.DataFrame(data) 
+test = data.loc[(data['a'] > 0) & (data['b']=='a'), 'a']
+eqString=' m.d2Tdz2[i,j,k] + m.d2Tdr2[i,j,k] + m.u[i,j,k] == C.rhoB*(C.epi*C.rhoA*(C.Cpa+C.lmbda*.62413*C.b*C.p/((m.T[i,j,k]+C.c)**2*(C.p/C.d*math.exp(C.a-C.b/(m.T[i,j,k]+C.c))-1)**2*C.d*math.exp(C.a-C.b/(m.T[i,j,k]+C.c)))+(1-C.epi)*C.rhoS*C.Cps))/C.rhoB*m.dTdt[i,j,k]'
+
+np.exp(test)
+x2=5
+np.exp([1,2])
+math.exp(2)
