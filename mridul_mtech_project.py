@@ -1031,3 +1031,7 @@ np.exp(test)
 x2=5
 np.exp([1,2])
 math.exp(2)
+
+df3=outDF[outDF.t==0]
+df3.columns
+pivot = df3.pivot_table(index=['z'], values=['r'], aggfunc='max')
